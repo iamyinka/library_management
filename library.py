@@ -30,7 +30,7 @@ class LibraryItem(ABC):
     def get_summary(self) -> str: ...
 
     @abstractmethod
-    def get_dipslay_title(self) -> str: ...
+    def get_display_title(self) -> str: ...
 
 
 class Book(LibraryItem):
@@ -43,7 +43,7 @@ class Book(LibraryItem):
 
     @classmethod
     def from_dict(cls, data: dict) -> "Book":
-        return cls(data["title", data["author"], data["isbn"]])
+        return cls(data["title"], data["author"], data["isbn"])
 
     @staticmethod
     def is_valid_isbn(isbn: str) -> bool:
@@ -104,4 +104,86 @@ class Library:
             return
         print(f"\n{self.name} - Catalogue:")
         for book in self._books:
-            print(f"    {book.get_dipslay_title()}")
+            print(f"    {book.get_display_title()}")
+
+    def borrow_book(self, isbn: str, member_id: str) -> None:
+        book = self.find_book(isbn=isbn)
+        member = self.find_member(member_id=member_id)
+
+        if book.status != BookStatus.AVAILABLE:
+            raise BookNotAvailableError(
+                f'"{book.title}" is currently {book.status.value}'
+            )
+
+        book.status = BookStatus.BORROWED
+        book.borrowed_by = member.name
+        member.borrowed_books.append(isbn)
+
+        print(f'{member.name} borrowed "{book.title}"')
+
+    def return_book(self, isbn: str, member_id: str) -> None:
+        book = self.find_book(isbn=isbn)
+        member = self.find_member(member_id=member_id)
+
+        if book.status != BookStatus.BORROWED:
+            raise BookAlreadyReturnedError(f'"{book.title} is not currently borrowed"')
+
+        book.status = BookStatus.AVAILABLE
+        book.borrowed_by = None
+        member.borrowed_books.remove(isbn)
+        print(f'{member.name} returned "{book.title}"')
+
+
+def main() -> None:
+    library = Library("London City Central Library")
+    book1 = Book.from_dict(
+        {"title": "Clean Code", "author": "Robert Martin", "isbn": "9780132350884"}
+    )
+    book2 = Book.from_dict(
+        {
+            "title": "The Pragmatic Programmer",
+            "author": "David Thomas",
+            "isbn": "9780135957059",
+        }
+    )
+    book3 = Book("Python Crash Course", "Eric Matthes", "9781593279288")
+
+    library.add_book(book1)
+    library.add_book(book2)
+    library.add_book(book3)
+
+    alice = Member(name="Alice", member_id="M001")
+    bob = Member(name="Bob", member_id="M002")
+
+    library.add_member(alice)
+    library.add_member(bob)
+
+    library.list_books()
+
+    print("\n--- Alice borrows Clean Code ---")
+    library.borrow_book("9780132350884", "M001")
+    library.list_books()
+
+    print("\n--- Bob tries to borrow the same book ---")
+    try:
+        library.borrow_book("9780132350884", "M002")
+    except BookNotAvailableError as e:
+        print(f"Error: {e}")
+
+    print("\n--- Alice returns Clean Code ---")
+    library.return_book("9780132350884", "M001")
+    library.list_books()
+
+    print("\n--- Invalid ISBN test ---")
+    try:
+        library.add_book(Book("Bad Book", "Nobody", "123"))
+    except ValueError as e:
+        print(f"Error: {e}")
+
+    print("\n--- Static method test ---")
+    print(f"'9780132350884' valid? {Book.is_valid_isbn('9780132350884')}")
+    print(f"'123' valid? {Book.is_valid_isbn('123')}")
+
+
+if __name__ == "__main__":
+    main()
