@@ -1,5 +1,7 @@
 # Library Management CLI
 
+#### A library system where members can borrow and return books.
+
 - Enum — fixed named values, no magic strings
 - Custom exception hierarchy — LibraryError → specific errors
 - ABC + @abstractmethod — enforced contract on child classes
